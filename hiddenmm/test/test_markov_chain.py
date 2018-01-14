@@ -1,8 +1,8 @@
 import numpy as np
+import nose.tools as ntools
+
 import hiddenmm.model.markov_chain as mc
 import hiddenmm.constants as constants
-
-import nose.tools as ntools
 
 
 def test_creation_passes():
