@@ -1,5 +1,5 @@
 import numpy as np
-import hiddenmm.model.markov_chain as base
+import hiddenmm.model.markov_chain as mc
 import hiddenmm.constants as constants
 
 import nose.tools as ntools
@@ -14,7 +14,7 @@ def test_creation_passes():
         [0.5, 0.5]
     ])
 
-    base.MarkovChain(pi, a)
+    mc.MarkovChain(pi, a)
 
 
 @ntools.raises(ValueError)
@@ -27,7 +27,7 @@ def test_creation_dim_fails():
         [0.5, 0.5]
     ])
 
-    base.MarkovChain(pi, a)
+    mc.MarkovChain(pi, a)
 
 
 @ntools.raises(ValueError)
@@ -40,7 +40,7 @@ def test_creation_distribution_sum():
         [0.5, 0.5]
     ])
 
-    base.MarkovChain(pi, a)
+    mc.MarkovChain(pi, a)
 
 
 @ntools.raises(ValueError)
@@ -53,7 +53,7 @@ def test_creation_distribution_sum_1():
         [0.5, 0.5]
     ])
 
-    base.MarkovChain(pi, a)
+    mc.MarkovChain(pi, a)
 
 
 @ntools.raises(ValueError)
@@ -66,7 +66,7 @@ def test_creation_distribution_sum_2():
         [0.5, 0.4]
     ])
 
-    base.MarkovChain(pi, a)
+    mc.MarkovChain(pi, a)
 
 
 @ntools.raises(ValueError)
@@ -79,7 +79,7 @@ def test_creation_negative_distribution():
         [0.5, 0.4]
     ])
 
-    base.MarkovChain(pi, a)
+    mc.MarkovChain(pi, a)
 
 
 def test_simple_generation():
@@ -91,7 +91,7 @@ def test_simple_generation():
         [0.5, 0.5]
     ])
 
-    model = base.MarkovChain(pi, a)
+    model = mc.MarkovChain(pi, a)
 
     result = model.generate(n=100)
 
@@ -109,7 +109,7 @@ def test_constant_generation():
         [0.1, 0.8, 0.1]
     ])
 
-    model = base.MarkovChain(pi, a)
+    model = mc.MarkovChain(pi, a)
 
     result = model.generate(n=100)
 
