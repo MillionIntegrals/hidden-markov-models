@@ -35,7 +35,7 @@ class MarkovChain:
         if not np.all(self.transition_matrix >= 0.0):
             raise ValueError('Transition matrix parameters must be positive.')
 
-    def generate(self, n):
+    def generate(self, n: int) -> np.ndarray:
         """ Generate a run of length n of given markov chain """
         result = []
 

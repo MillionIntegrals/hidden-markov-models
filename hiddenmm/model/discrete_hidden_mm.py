@@ -10,6 +10,7 @@ class DiscreteHiddenMM:
     def __init__(self, mc: mcmodule.MarkovChain, projection: np.ndarray):
         self.mc = mc
         self.projection = projection
+        self.num_outputs = self.projection.shape[1]
 
         if self.mc.num_states != projection.shape[0]:
             raise ValueError("Dimension mismatch: projection dies not match number of states of Markov Chain")
@@ -19,3 +20,14 @@ class DiscreteHiddenMM:
 
         if not np.all(self.projection >= 0.0):
             raise ValueError("Projection matrix distribution must be positive.")
+
+    def generate(self, n: int) -> np.ndarray:
+        """ Generate given markov model """
+        underlying_chain = self.mc.generate(n)
+
+        result = []
+
+        for i in range(n):
+            result.append(np.random.choice(self.num_outputs, p=self.projection[underlying_chain[i]]))
+
+        return np.vstack([underlying_chain, np.array(result, dtype=int)]).T

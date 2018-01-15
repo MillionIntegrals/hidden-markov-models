@@ -79,3 +79,26 @@ def test_distribution_negative():
     ])
 
     dhmm.DiscreteHiddenMM(chain, b)
+
+
+def test_generation_1():
+    pi = np.array([0.1, 0.9])
+
+    a = np.array([
+        [0.1, 0.9],
+        [0.5, 0.5]
+    ])
+
+    chain = mc.MarkovChain(pi, a)
+
+    b = np.array([
+        [0.2, 0.2, 0.2, 0.2, 0.2],
+        [0.1, 0.1, 0.2, 0.3, 0.3]
+    ])
+
+    model = dhmm.DiscreteHiddenMM(chain, b)
+
+    result = model.generate(100)
+
+    assert result.shape[0] == 100
+    assert result.shape[1] == 2
