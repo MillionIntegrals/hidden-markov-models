@@ -132,6 +132,8 @@ def test_likelihood_summation():
 
                     likelihood = model.likelihood(np.array(observations, dtype=int))
 
+                    assert likelihood >= 0.0
+
                     summation += likelihood
 
     assert np.abs(summation - 1.0) < cnst.EPSILON
