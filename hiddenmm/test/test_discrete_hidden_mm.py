@@ -137,3 +137,28 @@ def test_likelihood_summation():
                     summation += likelihood
 
     assert np.abs(summation - 1.0) < cnst.EPSILON
+
+
+def test_likelihood_basic():
+    pi = np.array([0.1, 0.9])
+
+    a = np.array([
+        [0.1, 0.9],
+        [0.5, 0.5]
+    ])
+
+    chain = mc.MarkovChain(pi, a)
+
+    b = np.array([
+        [0.2, 0.2, 0.2, 0.2, 0.2],
+        [0.1, 0.1, 0.2, 0.3, 0.3]
+    ])
+
+    model = dhmm.DiscreteHiddenMM(chain, b)
+
+    assert np.abs(model.likelihood(np.array([0], dtype=int)) - 0.11) < cnst.EPSILON
+    assert np.abs(model.likelihood(np.array([1], dtype=int)) - 0.11) < cnst.EPSILON
+    assert np.abs(model.likelihood(np.array([2], dtype=int)) - 0.20) < cnst.EPSILON
+    assert np.abs(model.likelihood(np.array([3], dtype=int)) - 0.29) < cnst.EPSILON
+    assert np.abs(model.likelihood(np.array([4], dtype=int)) - 0.29) < cnst.EPSILON
+
