@@ -162,3 +162,69 @@ def test_likelihood_basic():
     assert np.abs(model.likelihood(np.array([3], dtype=int)) - 0.29) < cnst.EPSILON
     assert np.abs(model.likelihood(np.array([4], dtype=int)) - 0.29) < cnst.EPSILON
 
+
+def test_solve_for_state_constant_chain():
+    pi = np.array([0.0, 0.0, 1.0])
+
+    a = np.array([
+        [1.0, 0.0, 0.0],
+        [0.5, 0.5, 0.0],
+        [0.0, 0.5, 0.5]
+    ])
+
+    chain = mc.MarkovChain(pi, a)
+
+    b = np.array([
+        [0.4, 0.2, 0.2, 0.2, 0.0],
+        [0.1, 0.1, 0.2, 0.3, 0.3],
+        [0.05, 0.0, 0.0, 0.45, 0.5]
+    ])
+
+    model = dhmm.DiscreteHiddenMM(chain, b)
+
+    assert np.allclose(model.solve_for_states(np.array([0, 1, 2, 3, 4])), np.array([2, 1, 1, 1, 1]))
+
+
+def test_solve_for_state_list():
+    pi = np.array([1.0, 0.0, 0.0])
+
+    a = np.array([
+        [1.0, 0.0, 0.0],
+        [0.5, 0.5, 0.0],
+        [0.0, 0.5, 0.5]
+    ])
+
+    chain = mc.MarkovChain(pi, a)
+
+    b = np.array([
+        [0.2, 0.2, 0.2, 0.2, 0.2],
+        [0.1, 0.1, 0.2, 0.3, 0.3],
+        [0.0, 0.0, 0.0, 0.5, 0.5]
+    ])
+
+    model = dhmm.DiscreteHiddenMM(chain, b)
+
+    assert np.allclose(model.solve_for_states(np.array([0, 1, 2, 3, 4])), 0)
+
+
+@ntools.raises(ValueError)
+def test_solve_for_state_constant_chain():
+    pi = np.array([0.0, 0.0, 1.0])
+
+    a = np.array([
+        [1.0, 0.0, 0.0],
+        [0.5, 0.5, 0.0],
+        [0.0, 0.5, 0.5]
+    ])
+
+    chain = mc.MarkovChain(pi, a)
+
+    b = np.array([
+        [0.2, 0.2, 0.2, 0.2, 0.2],
+        [0.1, 0.1, 0.2, 0.3, 0.3],
+        [0.0, 0.0, 0.0, 0.5, 0.5]
+    ])
+
+    model = dhmm.DiscreteHiddenMM(chain, b)
+
+    model.solve_for_states(np.array([0, 1, 2, 3, 4]))

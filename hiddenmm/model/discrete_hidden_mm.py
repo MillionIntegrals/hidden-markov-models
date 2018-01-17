@@ -45,3 +45,40 @@ class DiscreteHiddenMM:
             return vector.sum()
         else:
             return 0.0
+
+    def solve_for_states(self, observations: np.ndarray):
+        """ Solve for the most probable state sequence for given observation series """
+        dimension = observations.shape[0]
+
+        if dimension > 0:
+            result = []
+
+            buffer = np.zeros((dimension, self.markov_chain.num_states), dtype=float)
+            state_buffer = np.zeros((dimension, self.markov_chain.num_states), dtype=int)
+
+            buffer[0] = self.markov_chain.initial * self.projection[:, observations[0]]
+
+            for i in range(1, dimension):
+                # Reshape the buffer to make sure the multiplication is broadcasted correctly
+                previous_step = buffer[i-1].reshape((self.markov_chain.num_states, 1))
+                local_likelihoods = (previous_step * self.markov_chain.transition_matrix)
+
+                new_likelihood = local_likelihoods.max(axis=0)
+                state_buffer[i] = local_likelihoods.argmax(axis=0)
+                buffer[i] = new_likelihood * self.projection[:, observations[i]]
+
+            final_state = np.argmax(buffer[dimension-1])
+            result.append(final_state)
+
+            current_state = final_state
+
+            for i in range(dimension-1, 0, -1):
+                if buffer[i][current_state] <= 0.0:
+                    raise ValueError("Impossible observation sequence [likelihood = 0].")
+
+                current_state = state_buffer[i][current_state]
+                result.append(current_state)
+
+            return np.array(result[::-1], dtype=int)
+        else:
+            return np.array([], dtype=int)
