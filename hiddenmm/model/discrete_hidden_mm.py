@@ -149,6 +149,10 @@ class DiscreteHiddenMM:
             new_transition = new_transition_numerator / new_transition_denominator
             new_projection = new_projection_numerator / new_projection_denominator
 
+            # A way to handle divisions 0/0
+            new_transition = np.where(np.isnan(new_transition), np.eye(self.num_states), new_transition)
+            new_projection = np.where(np.isnan(new_projection), 1.0 / self.num_outputs, new_projection)
+
             return DiscreteHiddenMM(mc.MarkovChain(new_initial_distribution, new_transition), new_projection)
         else:
             return self

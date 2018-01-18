@@ -260,7 +260,7 @@ def test_fit_single():
 
 
 def test_fit_single_random():
-    for i in range(10):
+    for i in range(20):
         pi = np.array([0.3, 0.4, 0.3])
 
         a = np.array([
@@ -279,7 +279,7 @@ def test_fit_single_random():
 
         model = dhmm.DiscreteHiddenMM(chain, b)
 
-        sequence = np.random.choice(model.num_outputs, size=5)
+        sequence = np.random.choice(model.num_outputs, size=10)
 
         model2 = model.fit_single(sequence)
 
