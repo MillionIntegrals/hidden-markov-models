@@ -50,3 +50,7 @@ class MarkovChain:
             return np.array(result, dtype=int)
         else:
             return np.array([], dtype=int)
+
+    def copy(self) -> 'MarkovChain':
+        """ Make a copy of this markov chain """
+        return MarkovChain(self.initial.copy(), self.transition_matrix.copy())

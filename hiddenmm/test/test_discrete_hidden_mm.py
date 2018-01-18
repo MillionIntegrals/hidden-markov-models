@@ -228,3 +228,62 @@ def test_solve_for_state_constant_chain():
     model = dhmm.DiscreteHiddenMM(chain, b)
 
     model.solve_for_states(np.array([0, 1, 2, 3, 4]))
+
+
+def test_fit_single():
+    pi = np.array([0.3, 0.4, 0.3])
+
+    a = np.array([
+        [0.1, 0.1, 0.8],
+        [0.5, 0.5, 0.0],
+        [0.0, 0.5, 0.5]
+    ])
+
+    chain = mc.MarkovChain(pi, a)
+
+    b = np.array([
+        [0.2, 0.2, 0.2, 0.2, 0.2],
+        [0.1, 0.1, 0.2, 0.3, 0.3],
+        [0.0, 0.0, 0.0, 0.5, 0.5]
+    ])
+
+    model = dhmm.DiscreteHiddenMM(chain, b)
+
+    sequence = np.array([0, 1, 2, 3, 4])
+
+    model2 = model.fit_single(sequence)
+
+    old_likelihood = model.likelihood(sequence)
+    new_likelihood = model2.likelihood(sequence)
+
+    assert new_likelihood >= old_likelihood
+
+
+def test_fit_single_random():
+    for i in range(10):
+        pi = np.array([0.3, 0.4, 0.3])
+
+        a = np.array([
+            [0.1, 0.1, 0.8],
+            [0.5, 0.5, 0.0],
+            [0.0, 0.5, 0.5]
+        ])
+
+        chain = mc.MarkovChain(pi, a)
+
+        b = np.array([
+            [0.2, 0.2, 0.2, 0.2, 0.2],
+            [0.1, 0.1, 0.2, 0.3, 0.3],
+            [0.0, 0.0, 0.0, 0.5, 0.5]
+        ])
+
+        model = dhmm.DiscreteHiddenMM(chain, b)
+
+        sequence = np.random.choice(model.num_outputs, size=5)
+
+        model2 = model.fit_single(sequence)
+
+        old_likelihood = model.likelihood(sequence)
+        new_likelihood = model2.likelihood(sequence)
+
+        assert new_likelihood >= old_likelihood
