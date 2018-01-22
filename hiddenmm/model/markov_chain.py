@@ -4,7 +4,7 @@ import hiddenmm.constants as constants
 
 
 class MarkovChain:
-    """ Basic markov chain generative description consisting of initial state and transition matrix """
+    """ Basic markov chain generative model. Consists of initial state and a transition matrix """
 
     def __init__(self, initial: np.ndarray, transition_matrix: np.ndarray):
         self.initial = initial

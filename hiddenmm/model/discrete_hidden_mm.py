@@ -23,7 +23,7 @@ class DiscreteHiddenMM:
 
     @property
     def num_states(self) -> int:
-        """ Number of marko chain states """
+        """ Number of markov chain states """
         return self.markov_chain.num_states
 
     @property
