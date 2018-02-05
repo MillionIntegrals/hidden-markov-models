@@ -2,6 +2,7 @@ import numpy as np
 
 import hiddenmm.model.markov_chain as mc
 import hiddenmm.constants as constants
+import hiddenmm.numeric_util as nutil
 
 
 class DiscreteHiddenMM:
@@ -47,75 +48,110 @@ class DiscreteHiddenMM:
 
         return np.vstack([underlying_chain, np.array(result, dtype=int)]).T
 
+    def _helper_alpha(self, observations: np.ndarray, stable=False) -> np.ndarray:
+        """ Return a helper "alpha" variable matrix over time for given observation series """
+        alpha = np.zeros((observations.shape[0], self.num_states), dtype=float)
+
+        # Initialization
+        alpha[0] = self.initial_distribution * self.projection[:, observations[0]]
+
+        if stable:
+            alpha[0] = nutil.rescale_vector(alpha[0])
+
+        # Induction
+        for i in range(1, observations.shape[0]):
+            alpha[i] = (alpha[i-1] @ self.transition_matrix) * self.projection[:, observations[i]]
+
+            if stable:
+                alpha[i] = nutil.rescale_vector(alpha[i])
+
+        return alpha
+
+    def _helper_beta(self, observations: np.ndarray, stable=False) -> np.ndarray:
+        """ Return a helper beta variable matrix over time for given observation series """
+        beta = np.zeros((observations.shape[0], self.num_states), dtype=float)
+
+        # Initialization
+        beta[observations.shape[0]-1] = 1.0
+
+        # Induction
+        for i in range(observations.shape[0] - 1, 0, -1):
+            beta[i-1] = self.transition_matrix @ (self.projection[:, observations[i]] * beta[i])
+
+            if stable:
+                beta[i-1] = nutil.rescale_vector(beta[i-1])
+
+        return beta
+
+    def _helper_delta_psi(self, observations: np.ndarray, stable=False) -> (np.ndarray, np.ndarray):
+        """ Return a helper delta variable matrix over time for given observation series """
+        delta = np.zeros((observations.shape[0], self.num_states), dtype=float)
+        psi = np.zeros((observations.shape[0], self.num_states), dtype=int)
+
+        delta[0] = self.initial_distribution * self.projection[:, observations[0]]
+
+        if stable:
+            delta[0] = nutil.rescale_vector(delta[0])
+
+        for i in range(1, observations.shape[0]):
+            # Reshape the buffer to make sure the multiplication is broadcasted correctly
+            previous_step = delta[i-1].reshape((self.num_states, 1))
+            local_likelihoods = (previous_step * self.transition_matrix)
+            new_likelihood = local_likelihoods.max(axis=0)
+
+            psi[i] = local_likelihoods.argmax(axis=0)
+            delta[i] = new_likelihood * self.projection[:, observations[i]]
+
+            if stable:
+                delta[i] = nutil.rescale_vector(delta[i])
+
+        return delta, psi
+
     def likelihood(self, observations: np.ndarray) -> float:
         """ Return likelihood of supplied observation series """
         dimension = observations.shape[0]
 
-        if dimension > 0:
-            vector = self.markov_chain.initial * self.projection[:, observations[0]]
-
-            for i in range(1, dimension):
-                vector = (vector @ self.transition_matrix) * self.projection[:, observations[i]]
-
-            return vector.sum()
-        else:
+        # Short-circuit
+        if dimension == 0:
             return 0.0
 
-    def solve_for_states(self, observations: np.ndarray) -> np.ndarray:
+        alpha = self._helper_alpha(observations)
+        return alpha[-1].sum()
+
+    def solve_for_states(self, observations: np.ndarray, stable=True) -> np.ndarray:
         """ Solve for the most probable state sequence for given observation series """
         dimension = observations.shape[0]
 
-        if dimension > 0:
-            result = []
-
-            buffer = np.zeros((dimension, self.num_states), dtype=float)
-            state_buffer = np.zeros((dimension, self.num_states), dtype=int)
-
-            buffer[0] = self.initial_distribution * self.projection[:, observations[0]]
-
-            for i in range(1, dimension):
-                # Reshape the buffer to make sure the multiplication is broadcasted correctly
-                previous_step = buffer[i-1].reshape((self.num_states, 1))
-                local_likelihoods = (previous_step * self.transition_matrix)
-
-                new_likelihood = local_likelihoods.max(axis=0)
-                state_buffer[i] = local_likelihoods.argmax(axis=0)
-                buffer[i] = new_likelihood * self.projection[:, observations[i]]
-
-            final_state = np.argmax(buffer[dimension-1])
-            result.append(final_state)
-
-            current_state = final_state
-
-            for i in range(dimension-1, 0, -1):
-                if buffer[i][current_state] <= 0.0:
-                    raise ValueError("Impossible observation sequence [likelihood = 0].")
-
-                current_state = state_buffer[i][current_state]
-                result.append(current_state)
-
-            return np.array(result[::-1], dtype=int)
-        else:
+        # Short-circuit
+        if dimension == 0:
             return np.array([], dtype=int)
 
-    def fit_single(self, observations: np.ndarray) -> 'DiscreteHiddenMM':
+        delta, psi = self._helper_delta_psi(observations, stable=stable)
+
+        result = []
+        final_state = np.argmax(delta[dimension-1])
+        result.append(final_state)
+
+        current_state = final_state
+
+        # Walk through the time back and reconstruct the state sequence
+        for i in range(dimension-1, 0, -1):
+            if delta[i][current_state] <= 0.0:
+                raise ValueError("Impossible observation sequence [likelihood = 0].")
+
+            current_state = psi[i][current_state]
+            result.append(current_state)
+
+        return np.array(result[::-1], dtype=int)
+
+    def fit_single(self, observations: np.ndarray, stable=True) -> 'DiscreteHiddenMM':
         """ Perform an expectation-maximization procedure on the hidden markov chain model """
         dimension = observations.shape[0]
 
         if dimension > 0:
             # Helper variables
-            alpha = np.zeros((dimension, self.num_states), dtype=float)
-            beta = np.zeros((dimension, self.num_states), dtype=float)
-
-            alpha[0] = self.initial_distribution * self.projection[:, observations[0]]
-
-            for i in range(1, dimension):
-                alpha[i] = (alpha[i-1] @ self.transition_matrix) * self.projection[:, observations[i]]
-
-            beta[dimension-1] = 1.0
-
-            for i in range(dimension - 1, 0, -1):
-                beta[i-1] = self.transition_matrix @ (self.projection[:, observations[i]] * beta[i])
+            alpha = self._helper_alpha(observations, stable=stable)
+            beta = self._helper_beta(observations, stable=stable)
 
             # Output will be stored in these variables
             new_initial_distribution = np.zeros(self.num_states, dtype=float)
