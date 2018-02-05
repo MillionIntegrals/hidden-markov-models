@@ -12,3 +12,6 @@ Implemented algorithms:
 - https://en.wikipedia.org/wiki/Forward%E2%80%93backward_algorithm
 - https://en.wikipedia.org/wiki/Viterbi_algorithm
 - https://en.wikipedia.org/wiki/Baum%E2%80%93Welch_algorithm
+
+### Research papers
+- http://www.ece.ucsb.edu/Faculty/Rabiner/ece259/Reprints/tutorial%20on%20hmm%20and%20applications.pdf
