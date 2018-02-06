@@ -287,3 +287,88 @@ def test_fit_single_random():
         new_likelihood = model2.likelihood(sequence)
 
         assert new_likelihood >= old_likelihood
+
+
+def test_fit_single_random_long():
+    pi = np.array([0.3, 0.4, 0.3])
+
+    a = np.array([
+        [0.1, 0.1, 0.8],
+        [0.5, 0.5, 0.0],
+        [0.0, 0.5, 0.5]
+    ])
+
+    chain = mc.MarkovChain(pi, a)
+
+    b = np.array([
+        [0.2, 0.2, 0.2, 0.2, 0.2],
+        [0.1, 0.1, 0.2, 0.3, 0.3],
+        [0.0, 0.0, 0.0, 0.5, 0.5]
+    ])
+
+    model = dhmm.DiscreteHiddenMM(chain, b)
+
+    sequence = np.random.choice(model.num_outputs, size=10000)
+
+    model2 = model.fit_single(sequence)
+
+    old_likelihood = model.likelihood(sequence)
+    new_likelihood = model2.likelihood(sequence)
+
+    assert new_likelihood >= old_likelihood
+
+
+def test_log_likelihood():
+    pi = np.array([0.3, 0.4, 0.3])
+
+    a = np.array([
+        [0.1, 0.1, 0.8],
+        [0.5, 0.5, 0.0],
+        [0.0, 0.5, 0.5]
+    ])
+
+    chain = mc.MarkovChain(pi, a)
+
+    b = np.array([
+        [0.2, 0.2, 0.2, 0.2, 0.2],
+        [0.1, 0.1, 0.2, 0.3, 0.3],
+        [0.0, 0.0, 0.0, 0.5, 0.5]
+    ])
+
+    model = dhmm.DiscreteHiddenMM(chain, b)
+
+    sequence = np.random.choice(model.num_outputs, size=10)
+
+    for i in range(100):
+        likelihood = model.likelihood(sequence)
+        log_likelihood = model.log_likelihood(sequence)
+
+        assert np.allclose(np.log(likelihood), log_likelihood)
+
+
+def test_log_likelihood_constant():
+    pi = np.array([1.0, 0.0, 0.0])
+
+    a = np.array([
+        [1.0, 0.0, 0.0],
+        [0.5, 0.5, 0.0],
+        [0.0, 0.5, 0.5]
+    ])
+
+    chain = mc.MarkovChain(pi, a)
+
+    b = np.array([
+        [1.0, 0.0, 0.0, 0.0, 0.0],
+        [0.1, 0.1, 0.2, 0.3, 0.3],
+        [0.0, 0.0, 0.0, 0.5, 0.5]
+    ])
+
+    model = dhmm.DiscreteHiddenMM(chain, b)
+
+    sequence = np.random.choice(model.num_outputs, size=10)
+
+    for i in range(100):
+        likelihood = model.likelihood(sequence)
+        log_likelihood = model.log_likelihood(sequence)
+
+        assert np.allclose(np.log(likelihood), log_likelihood)

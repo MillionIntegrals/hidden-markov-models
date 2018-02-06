@@ -48,62 +48,70 @@ class DiscreteHiddenMM:
 
         return np.vstack([underlying_chain, np.array(result, dtype=int)]).T
 
-    def _helper_alpha(self, observations: np.ndarray, stable=False) -> np.ndarray:
+    def _helper_alpha(self, observations: np.ndarray, stable=False) -> (np.ndarray, np.ndarray):
         """ Return a helper "alpha" variable matrix over time for given observation series """
         alpha = np.zeros((observations.shape[0], self.num_states), dtype=float)
+        multipliers = np.ones(observations.shape[0], dtype=float)
 
         # Initialization
         alpha[0] = self.initial_distribution * self.projection[:, observations[0]]
 
         if stable:
-            alpha[0] = nutil.rescale_vector(alpha[0])
+            alpha[0], multipliers[0] = nutil.rescale_vector(alpha[0])
 
         # Induction
         for i in range(1, observations.shape[0]):
             alpha[i] = (alpha[i-1] @ self.transition_matrix) * self.projection[:, observations[i]]
 
             if stable:
-                alpha[i] = nutil.rescale_vector(alpha[i])
+                alpha[i], multipliers[i] = nutil.rescale_vector(alpha[i])
 
-        return alpha
+        return alpha, multipliers
 
-    def _helper_beta(self, observations: np.ndarray, stable=False) -> np.ndarray:
-        """ Return a helper beta variable matrix over time for given observation series """
+    def _helper_beta(self, observations: np.ndarray, stable=False) -> (np.ndarray, np.ndarray):
+        """ Return a helper "beta" variable matrix over time for given observation series """
         beta = np.zeros((observations.shape[0], self.num_states), dtype=float)
+        multipliers = np.ones(observations.shape[0], dtype=float)
 
         # Initialization
         beta[observations.shape[0]-1] = 1.0
+        multipliers[observations.shape[0]-1] = 1.0
 
         # Induction
         for i in range(observations.shape[0] - 1, 0, -1):
             beta[i-1] = self.transition_matrix @ (self.projection[:, observations[i]] * beta[i])
 
             if stable:
-                beta[i-1] = nutil.rescale_vector(beta[i-1])
+                beta[i-1], multipliers[i-1] = nutil.rescale_vector(beta[i-1])
 
-        return beta
+        return beta, multipliers
 
     def _helper_delta_psi(self, observations: np.ndarray, stable=False) -> (np.ndarray, np.ndarray):
-        """ Return a helper delta variable matrix over time for given observation series """
+        """ Return a helper "delta" variable matrix over time for given observation series """
         delta = np.zeros((observations.shape[0], self.num_states), dtype=float)
         psi = np.zeros((observations.shape[0], self.num_states), dtype=int)
 
-        delta[0] = self.initial_distribution * self.projection[:, observations[0]]
-
         if stable:
-            delta[0] = nutil.rescale_vector(delta[0])
+            delta[0] = np.log(self.initial_distribution) + np.log(self.projection[:, observations[0]])
+        else:
+            delta[0] = self.initial_distribution * self.projection[:, observations[0]]
 
         for i in range(1, observations.shape[0]):
             # Reshape the buffer to make sure the multiplication is broadcasted correctly
             previous_step = delta[i-1].reshape((self.num_states, 1))
-            local_likelihoods = (previous_step * self.transition_matrix)
-            new_likelihood = local_likelihoods.max(axis=0)
-
-            psi[i] = local_likelihoods.argmax(axis=0)
-            delta[i] = new_likelihood * self.projection[:, observations[i]]
 
             if stable:
-                delta[i] = nutil.rescale_vector(delta[i])
+                local_likelihoods = previous_step + np.log(self.transition_matrix)
+            else:
+                local_likelihoods = previous_step * self.transition_matrix
+
+            new_likelihood = local_likelihoods.max(axis=0)
+            psi[i] = local_likelihoods.argmax(axis=0)
+
+            if stable:
+                delta[i] = new_likelihood + np.log(self.projection[:, observations[i]])
+            else:
+                delta[i] = new_likelihood * self.projection[:, observations[i]]
 
         return delta, psi
 
@@ -115,8 +123,19 @@ class DiscreteHiddenMM:
         if dimension == 0:
             return 0.0
 
-        alpha = self._helper_alpha(observations)
+        alpha, multipliers = self._helper_alpha(observations, stable=False)
         return alpha[-1].sum()
+
+    def log_likelihood(self, observations: np.ndarray, stable=True) -> float:
+        """ Return likelihood of supplied observation series """
+        dimension = observations.shape[0]
+
+        # Short-circuit
+        if dimension == 0:
+            return 0.0
+
+        alpha, multipliers = self._helper_alpha(observations, stable=stable)
+        return np.log(alpha[-1].sum()) - np.log(multipliers).sum()
 
     def solve_for_states(self, observations: np.ndarray, stable=True) -> np.ndarray:
         """ Solve for the most probable state sequence for given observation series """
@@ -136,8 +155,13 @@ class DiscreteHiddenMM:
 
         # Walk through the time back and reconstruct the state sequence
         for i in range(dimension-1, 0, -1):
-            if delta[i][current_state] <= 0.0:
-                raise ValueError("Impossible observation sequence [likelihood = 0].")
+
+            if stable:
+                if delta[i][current_state] <= -np.inf:
+                    raise ValueError("Impossible observation sequence [likelihood = 0].")
+            else:
+                if delta[i][current_state] <= 0.0:
+                    raise ValueError("Impossible observation sequence [likelihood = 0].")
 
             current_state = psi[i][current_state]
             result.append(current_state)
@@ -150,8 +174,8 @@ class DiscreteHiddenMM:
 
         if dimension > 0:
             # Helper variables
-            alpha = self._helper_alpha(observations, stable=stable)
-            beta = self._helper_beta(observations, stable=stable)
+            alpha, alpha_multipliers = self._helper_alpha(observations, stable=stable)
+            beta, beta_multipliers = self._helper_beta(observations, stable=stable)
 
             # Output will be stored in these variables
             new_initial_distribution = np.zeros(self.num_states, dtype=float)
