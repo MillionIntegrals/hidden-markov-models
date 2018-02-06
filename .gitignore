@@ -102,3 +102,6 @@ ENV/
 
 # IDEA
 /.idea
+
+# Development helpers
+/hiddenmm/development
